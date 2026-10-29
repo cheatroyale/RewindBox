@@ -133,7 +133,20 @@ abstract final class MelonxMigrationService {
     bool linkGames = false,
     Set<String> registeredGameFolders = const {},
   }) async {
-    final source = await findRoot(selected);
+    // A normal transfer must be a complete MeloNX export so that its system
+    // data can be placed safely. Linking is different: the user may select a
+    // plain folder on an external drive which contains only games. Retain the
+    // existing export detection when it is available, but let that one narrow
+    // use case keep the selected folder in place rather than rejecting it.
+    Directory source;
+    var isMeloNxExport = true;
+    try {
+      source = await findRoot(selected);
+    } on FormatException {
+      if (!linkGames) rethrow;
+      source = selected;
+      isMeloNxExport = false;
+    }
     if (p.equals(source.path, root.path) ||
         p.isWithin(source.path, root.path) ||
         p.isWithin(root.path, source.path))
@@ -141,6 +154,7 @@ abstract final class MelonxMigrationService {
     final items = <MelonxTransferItem>[];
     final unsupported = <String>[];
     final linkedGames = <Directory>[];
+    if (linkGames && !isMeloNxExport) linkedGames.add(source);
     Future<void> add(FileSystemEntity entity, String relative) async {
       control.check();
       if (entity is Link) throw const FormatException('unsafePath');
@@ -239,7 +253,10 @@ abstract final class MelonxMigrationService {
           MelonxInternalService.gameExtensions.contains(
             p.extension(name).replaceFirst('.', '').toLowerCase(),
           )) {
-        await add(entity, p.join('roms', 'switch', name));
+        // A directly selected HDD folder is a library root, not an import
+        // source. Its games remain there and are discovered through the
+        // persistent security-scoped folder bookmark.
+        if (!linkGames) await add(entity, p.join('roms', 'switch', name));
       } else if (!MelonxTransferSource.ignored(name)) {
         unsupported.add(name);
       }

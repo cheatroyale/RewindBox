@@ -132,13 +132,14 @@ Future<bool> showMelonxTransfer(
   BuildContext context,
   SqliteConfigProvider config, {
   required bool savesOnly,
+  String? initialKind,
 }) => StorageImportActivity.run(
   () => MelonxInternalService.editLibrary(() async {
     String text(String key) => MelonxTransferLocale.text(context, key);
     final root = await MelonxInternalService.rootDirectory();
     await MelonxFileTransaction.recover(root);
     if (!context.mounted) return false;
-    final kind =
+    final kind = initialKind ??
         await _choose(context, text(savesOnly ? 'importSaves' : 'migrate'), {
           'folder': text('folder'),
           if (!savesOnly) 'linked': text('linkGames'),

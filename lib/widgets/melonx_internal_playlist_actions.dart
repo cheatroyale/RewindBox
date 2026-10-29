@@ -182,6 +182,14 @@ class _MelonxInternalPlaylistActionsState
           changed = await showMelonxTransfer(context, config, savesOnly: true);
         case 'migration':
           changed = await showMelonxTransfer(context, config, savesOnly: false);
+        case 'link':
+          discoverAfterImport = true;
+          changed = await showMelonxTransfer(
+            context,
+            config,
+            savesOnly: false,
+            initialKind: 'linked',
+          );
         case 'discover':
           await _discover();
         case 'delete':
@@ -275,6 +283,10 @@ class _MelonxInternalPlaylistActionsState
       onSelected: _selected,
       items: (_) => [
         PopupMenuItem(value: 'games', child: Text(_text('Import games'))),
+        PopupMenuItem(
+          value: 'link',
+          child: Text(MelonxTransferLocale.text(context, 'linkGames')),
+        ),
         PopupMenuItem(
           value: 'saves',
           child: Text(MelonxTransferLocale.text(context, 'importSaves')),

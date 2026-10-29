@@ -399,6 +399,27 @@ void main() {
     },
   );
   test(
+    'linking accepts a plain external ROM folder without copying its games',
+    () async {
+      final external = await Directory(
+        p.join(temporary.path, 'HDD', 'Switch'),
+      ).create(recursive: true);
+      await write(p.join(external.path, 'Portable game.nsp'), 'game');
+
+      final plan = await MelonxMigrationService.analyze(
+        external,
+        root,
+        MelonxTransferControl(),
+        linkGames: true,
+      );
+
+      expect(plan.source.path, external.path);
+      expect(plan.items, isEmpty);
+      expect(plan.unsupported, isEmpty);
+      expect(plan.linkedGames.single.path, external.path);
+    },
+  );
+  test(
     'migration adapts update and DLC paths without rewriting content IDs',
     () {
       final source = Directory('/export/MeloNX');
