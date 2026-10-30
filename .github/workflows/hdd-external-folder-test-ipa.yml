@@ -19,7 +19,9 @@ concurrency:
 jobs:
   build:
     name: Build the full unsigned iPhone app
-    runs-on: macos-15
+    # RewindBox uses newer UIKit interfaces (including UIGlassEffect), which
+    # require the current iPhone SDK rather than the Xcode 16.4 SDK on macOS 15.
+    runs-on: macos-26
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
