@@ -41,6 +41,37 @@ jobs:
           flutter analyze --no-fatal-infos
           flutter test test/melonx_transfer_test.dart
 
+      # MeloNX's engine and its native support frameworks are source-built in
+      # dedicated upstream jobs.  This test lane uses those exact, pinned
+      # public artifacts instead of substituting a different emulator build.
+      - name: Download the pinned MeloNX engine
+        uses: actions/download-artifact@v4
+        with:
+          repository: TarbleFR/RewindBox
+          name: MeloNX-engine-ab6d87ebb8b33d0151953b1b9ea7cefaab7a4b12
+          run-id: 40152134234
+          github-token: ${{ github.token }}
+          path: dist/melonx
+
+      - name: Download the pinned MeloNX native support
+        uses: actions/download-artifact@v4
+        with:
+          repository: TarbleFR/RewindBox
+          name: MeloNX-native-dependencies-66737aa9c959eb5915264bf178f179bda8643314
+          run-id: 39854858591
+          github-token: ${{ github.token }}
+          path: dist/melonx-native
+
+      - name: Materialize the verified MeloNX runtime and memory donor
+        run: |
+          set -euo pipefail
+          python3 build-utils/melonx/package_runtime.py
+          git init .native-sources/MeloNX
+          git -C .native-sources/MeloNX remote add origin https://starforgejo.dev/projects/MeloNX.git
+          git -C .native-sources/MeloNX fetch --depth 1 origin 13700519f3abc4e6d7ed8a065b118b2cc59bcd67
+          git -C .native-sources/MeloNX checkout --detach FETCH_HEAD
+          python3 build-utils/melonx/vendor_memory.py .native-sources/MeloNX
+
       - name: Generate the iPhone app shell
         run: |
           set -euo pipefail
@@ -67,6 +98,12 @@ jobs:
           set -euo pipefail
           command -v xcodegen || brew install xcodegen
           python3 build-utils/build_patched_stikjit.py
+
+      - name: Configure the MeloNX iPhone host
+        run: |
+          set -euo pipefail
+          python3 build-utils/configure_melonx_ios.py
+          pod install --project-directory=ios
 
       - name: Build iPhone app without a release signature
         run: |
