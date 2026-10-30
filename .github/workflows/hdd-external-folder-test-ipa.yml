@@ -1,0 +1,62 @@
+name: HDD external-folder test IPA
+run-name: HDD external-folder test IPA • ${{ github.sha }}
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rewindbox-hdd-external-folder-test-ipa
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build unsigned iPhone test IPA
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.2
+          channel: stable
+          cache: true
+
+      - name: Validate external-folder linking
+        run: |
+          set -euo pipefail
+          flutter pub get --enforce-lockfile
+          flutter analyze --no-fatal-infos
+          flutter test test/melonx_transfer_test.dart
+
+      - name: Build iPhone app without a release signature
+        run: |
+          set -euo pipefail
+          flutter build ios --release --no-codesign
+
+      - name: Package sideloadable test IPA
+        run: |
+          set -euo pipefail
+          APP="build/ios/iphoneos/Runner.app"
+          test -d "$APP"
+          mkdir -p dist/Payload
+          ditto "$APP" dist/Payload/RewindBox.app
+          ditto -c -k --sequesterRsrc --keepParent dist/Payload \
+            dist/RewindBox-HDD-External-Folder-Test.ipa
+          shasum -a 256 dist/RewindBox-HDD-External-Folder-Test.ipa \
+            > dist/RewindBox-HDD-External-Folder-Test.ipa.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RewindBox-HDD-External-Folder-Test-${{ github.sha }}
+          path: |
+            dist/RewindBox-HDD-External-Folder-Test.ipa
+            dist/RewindBox-HDD-External-Folder-Test.ipa.sha256
+          if-no-files-found: error
+          retention-days: 7
