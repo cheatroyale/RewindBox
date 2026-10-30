@@ -48,6 +48,12 @@ jobs:
           python3 packages/dolphin_internal_bridge/ci/build_support.py scaffold
           python3 build-utils/configure_neoplay_ios.py --deployment-only
 
+      - name: Build the required JIT support framework
+        run: |
+          set -euo pipefail
+          command -v xcodegen || brew install xcodegen
+          python3 build-utils/build_patched_stikjit.py
+
       - name: Build iPhone app without a release signature
         run: |
           set -euo pipefail
