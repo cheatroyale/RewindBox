@@ -62,7 +62,7 @@ jobs:
           github-token: ${{ github.token }}
           path: dist/melonx-native
 
-      - name: Materialize the verified MeloNX runtime and memory donor
+      - name: Materialize the verified MeloNX runtime, controls and memory donor
         run: |
           set -euo pipefail
           python3 build-utils/melonx/package_runtime.py
@@ -70,7 +70,11 @@ jobs:
           git -C .native-sources/MeloNX remote add origin https://starforgejo.dev/projects/MeloNX.git
           git -C .native-sources/MeloNX fetch --depth 1 origin 13700519f3abc4e6d7ed8a065b118b2cc59bcd67
           git -C .native-sources/MeloNX checkout --detach FETCH_HEAD
-          python3 build-utils/melonx/vendor_memory.py .native-sources/MeloNX
+          git init .native-sources/Melo-Controller
+          git -C .native-sources/Melo-Controller remote add origin https://github.com/stossy11/Melo-Controller.git
+          git -C .native-sources/Melo-Controller fetch --depth 1 origin c049ce88a5635bddcd88e1965c42aa8fc92fe961
+          git -C .native-sources/Melo-Controller checkout --detach FETCH_HEAD
+          python3 build-utils/melonx/vendor_controller.py .native-sources/Melo-Controller .native-sources/MeloNX
 
       - name: Generate the iPhone app shell
         run: |
