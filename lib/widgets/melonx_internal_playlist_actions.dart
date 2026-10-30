@@ -183,7 +183,6 @@ class _MelonxInternalPlaylistActionsState
         case 'migration':
           changed = await showMelonxTransfer(context, config, savesOnly: false);
         case 'link':
-          discoverAfterImport = true;
           changed = await showMelonxTransfer(
             context,
             config,
