@@ -47,6 +47,7 @@ jobs:
           flutter config --no-enable-swift-package-manager
           rm -rf ios
           python3 packages/dolphin_internal_bridge/ci/build_support.py scaffold
+          python3 build-utils/configure_neoswap_storage.py
           python3 build-utils/configure_neoplay_ios.py --deployment-only
 
       - name: Build the required JIT support framework
