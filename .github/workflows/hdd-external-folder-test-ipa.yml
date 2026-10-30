@@ -50,6 +50,17 @@ jobs:
           python3 build-utils/configure_neoswap_storage.py
           python3 build-utils/configure_neoplay_ios.py --deployment-only
 
+      - name: Set up iPhone project tools
+        run: |
+          set -euo pipefail
+          bundle config set --local path build/ruby-gems
+          bundle install --gemfile build-utils/Gemfile.dolphin
+
+      - name: Generate the storage relay
+        run: |
+          set -euo pipefail
+          python3 build-utils/configure_neoswap_relay.py
+
       - name: Build the required JIT support framework
         run: |
           set -euo pipefail
