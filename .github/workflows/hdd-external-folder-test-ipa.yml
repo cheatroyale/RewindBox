@@ -40,6 +40,13 @@ jobs:
           flutter analyze --no-fatal-infos
           flutter test test/melonx_transfer_test.dart
 
+      - name: Generate the iPhone app shell
+        run: |
+          set -euo pipefail
+          flutter config --no-enable-swift-package-manager
+          rm -rf ios
+          python3 packages/dolphin_internal_bridge/ci/build_support.py scaffold
+
       - name: Build iPhone app without a release signature
         run: |
           set -euo pipefail
