@@ -1,5 +1,5 @@
-name: HDD external-folder test IPA
-run-name: HDD external-folder test IPA • ${{ github.sha }}
+name: RewindBox full unsigned iPhone IPA
+run-name: RewindBox full unsigned iPhone IPA • ${{ github.sha }}
 
 on:
   push:
@@ -13,12 +13,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: rewindbox-hdd-external-folder-test-ipa
+  group: rewindbox-full-unsigned-iphone-ipa
   cancel-in-progress: true
 
 jobs:
   build:
-    name: Build unsigned iPhone test IPA
+    name: Build the full unsigned iPhone app
     runs-on: macos-15
     timeout-minutes: 90
     steps:
@@ -134,6 +134,10 @@ jobs:
           set -euo pipefail
           python3 build-utils/configure_dolphin_ios_v2.py
           python3 build-utils/configure_melonx_ios.py
+          # Dolphin's legacy helper preserves its original iOS 17.4 floor,
+          # but the full app includes normal iOS 18 components as well.
+          # Reapply the app-wide floor before CocoaPods resolves every plugin.
+          python3 build-utils/configure_neoplay_ios.py --no-xcode-resources
           pod install --project-directory=ios
 
       - name: Build iPhone app without a release signature
@@ -149,15 +153,15 @@ jobs:
           mkdir -p dist/Payload
           ditto "$APP" dist/Payload/RewindBox.app
           ditto -c -k --sequesterRsrc --keepParent dist/Payload \
-            dist/RewindBox-HDD-External-Folder-Test.ipa
-          shasum -a 256 dist/RewindBox-HDD-External-Folder-Test.ipa \
-            > dist/RewindBox-HDD-External-Folder-Test.ipa.sha256
+            dist/RewindBox-HDD-Enabled-Full-Project-Unsigned.ipa
+          shasum -a 256 dist/RewindBox-HDD-Enabled-Full-Project-Unsigned.ipa \
+            > dist/RewindBox-HDD-Enabled-Full-Project-Unsigned.ipa.sha256
 
       - uses: actions/upload-artifact@v4
         with:
-          name: RewindBox-HDD-External-Folder-Test-${{ github.sha }}
+          name: RewindBox-HDD-Enabled-Full-Project-Unsigned-${{ github.sha }}
           path: |
-            dist/RewindBox-HDD-External-Folder-Test.ipa
-            dist/RewindBox-HDD-External-Folder-Test.ipa.sha256
+            dist/RewindBox-HDD-Enabled-Full-Project-Unsigned.ipa
+            dist/RewindBox-HDD-Enabled-Full-Project-Unsigned.ipa.sha256
           if-no-files-found: error
           retention-days: 7
