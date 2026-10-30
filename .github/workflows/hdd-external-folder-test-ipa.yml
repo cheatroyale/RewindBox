@@ -17,8 +17,58 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build_dolphin_core:
+    name: Build the legacy Dolphin framework
+    # The pinned Dolphin source is compatible with Xcode 16.4.  Keep this
+    # isolated from the app build below, which needs the current iPhone SDK.
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      BUILD_NUMBER: '1'
+      DOLPHIN_SHA: 7cac54161659421ed95c2cd1c0b0746539a4cd38
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build the pinned Dolphin framework
+        run: |
+          set -euo pipefail
+          command -v cmake || brew install cmake
+          command -v ninja || brew install ninja
+          SRC="$RUNNER_TEMP/dolphin-ios"
+          git init "$SRC"
+          git -C "$SRC" remote add origin https://github.com/OatmealDome/dolphin-ios.git
+          git -C "$SRC" fetch --depth 1 origin "$DOLPHIN_SHA"
+          git -C "$SRC" checkout --detach FETCH_HEAD
+          git -C "$SRC" submodule update --init --recursive --depth 1
+          test "$(git -C "$SRC" rev-parse HEAD)" = "$DOLPHIN_SHA"
+          python3 build-utils/patch_dolphin_internal_core_v2.py "$SRC"
+          cmake -S "$SRC" -B "$SRC/build-iphoneos-Release" -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$SRC/Externals/ios-cmake/ios.toolchain.cmake" \
+            -DPLATFORM=OS64 -DDEPLOYMENT_TARGET=17.4 -DENABLE_VISIBILITY=ON \
+            -DENABLE_BITCODE=OFF -DENABLE_ARC=ON -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_FLAGS=-fPIC -DIOS=ON -DENABLE_ANALYTICS=NO \
+            -DUSE_SYSTEM_LIBS=OFF -DENABLE_TESTS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build "$SRC/build-iphoneos-Release" --target dolphin --parallel 3
+          mkdir -p ios/Runner
+          python3 packages/dolphin_internal_bridge/ci/build_support.py framework "$SRC"
+
+      - name: Save the verified Dolphin runtime for the current SDK build
+        uses: actions/upload-artifact@v4
+        with:
+          name: DolphinCore-${{ github.sha }}
+          path: |
+            packages/dolphin_internal_bridge/ios/Frameworks/DolphinCore.framework
+            ios/Runner/Sys
+            ios/Runner/cacert.pem
+          if-no-files-found: error
+          retention-days: 1
+
   build:
     name: Build the full unsigned iPhone app
+    needs: build_dolphin_core
     # RewindBox uses newer UIKit interfaces (including UIGlassEffect), which
     # require the current iPhone SDK rather than the Xcode 16.4 SDK on macOS 15.
     runs-on: macos-26
@@ -87,6 +137,12 @@ jobs:
           python3 build-utils/configure_neoswap_storage.py
           python3 build-utils/configure_neoplay_ios.py --deployment-only
 
+      - name: Restore the legacy Dolphin runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: DolphinCore-${{ github.sha }}
+          path: .
+
       - name: Set up iPhone project tools
         run: |
           set -euo pipefail
@@ -104,32 +160,6 @@ jobs:
           set -euo pipefail
           command -v xcodegen || brew install xcodegen
           python3 build-utils/build_patched_stikjit.py
-
-      - name: Build the pinned Dolphin framework
-        env:
-          BUILD_NUMBER: '1'
-          DOLPHIN_SHA: 7cac54161659421ed95c2cd1c0b0746539a4cd38
-          HOMEBREW_NO_AUTO_UPDATE: '1'
-        run: |
-          set -euo pipefail
-          command -v cmake || brew install cmake
-          command -v ninja || brew install ninja
-          SRC="$RUNNER_TEMP/dolphin-ios"
-          git init "$SRC"
-          git -C "$SRC" remote add origin https://github.com/OatmealDome/dolphin-ios.git
-          git -C "$SRC" fetch --depth 1 origin "$DOLPHIN_SHA"
-          git -C "$SRC" checkout --detach FETCH_HEAD
-          git -C "$SRC" submodule update --init --recursive --depth 1
-          test "$(git -C "$SRC" rev-parse HEAD)" = "$DOLPHIN_SHA"
-          python3 build-utils/patch_dolphin_internal_core_v2.py "$SRC"
-          cmake -S "$SRC" -B "$SRC/build-iphoneos-Release" -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE="$SRC/Externals/ios-cmake/ios.toolchain.cmake" \
-            -DPLATFORM=OS64 -DDEPLOYMENT_TARGET=17.4 -DENABLE_VISIBILITY=ON \
-            -DENABLE_BITCODE=OFF -DENABLE_ARC=ON -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_FLAGS=-fPIC -DIOS=ON -DENABLE_ANALYTICS=NO \
-            -DUSE_SYSTEM_LIBS=OFF -DENABLE_TESTS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-          cmake --build "$SRC/build-iphoneos-Release" --target dolphin --parallel 3
-          python3 packages/dolphin_internal_bridge/ci/build_support.py framework "$SRC"
 
       - name: Configure the native iPhone hosts
         run: |
