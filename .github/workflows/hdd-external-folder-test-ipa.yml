@@ -2,6 +2,11 @@ name: HDD external-folder test IPA
 run-name: HDD external-folder test IPA • ${{ github.sha }}
 
 on:
+  push:
+    branches:
+      - Claude
+    paths:
+      - .github/workflows/hdd-external-folder-test-ipa.yml
   workflow_dispatch:
 
 permissions:
