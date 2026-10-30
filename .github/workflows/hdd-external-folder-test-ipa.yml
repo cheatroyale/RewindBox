@@ -59,6 +59,7 @@ jobs:
       - name: Generate the storage relay
         run: |
           set -euo pipefail
+          python3 build-utils/configure_neoswap_donor.py
           python3 build-utils/configure_neoswap_relay.py
 
       - name: Build the required JIT support framework
